@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>عالم المانهوا</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #0a0a0a; color: #fff; font-family: 'Segoe UI', Tahoma, sans-serif; padding: 20px; }
+        h1 { text-align: center; color: #e63946; margin-bottom: 30px; font-size: 2rem; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 20px; max-width: 1200px; margin: 0 auto; }
+        .card { background: #1a1a1a; border-radius: 10px; overflow: hidden; transition: transform 0.2s; }
+        .card:hover { transform: translateY(-5px); }
+        .card img { width: 100%; aspect-ratio: 2/3; object-fit: cover; }
+        .card h3 { padding: 8px 12px; font-size: 14px; color: #f1faee; }
+        .card p { padding: 0 12px 12px; font-size: 12px; color: #aaa; }
+        .loading, .error { grid-column: 1 / -1; text-align: center; padding: 40px; font-size: 1.2rem; }
+        .error { color: #e63946; }
+    </style>
+</head>
+<body>
+    <h1>أحدث المانهوا</h1>
+    <div class="grid" id="manga-list"><div class="loading">جاري التحميل...</div></div>
+
+    <script>
+        const PROXY = 'https://manhwa-world.onrender.com/api/proxy?url=';
+
+        async function fetchJSON(url) {
+            const res = await fetch(PROXY + encodeURIComponent(url));
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return await res.json();
+        }
+
+        function proxyImage(url) {
+            // يمكن استخدام proxy لصور أيضاً، لكن للصور نفضل وضع الرابط مباشرة في src
+            // لأن الصور قد تكون كبيرة والمتصفح يتعامل معها مباشرة دون مشاكل CORS لو أتت من نفس الخادم
+            return url.startsWith('http') ? (PROXY + encodeURIComponent(url)) : url;
+        }
+
+        async function loadManga() {
+            const container = document.getElementById('manga-list');
+            try {
+                const data = await fetchJSON('https://api.azorafly.com/api/posts?page=1');
+                const posts = data.posts || data; // قد تكون الاستجابة مباشرة مصفوفة
+                container.innerHTML = '';
+
+                if (!posts.length) {
+                    container.innerHTML = '<div class="error">لا توجد أعمال حالياً.</div>';
+                    return;
+                }
+
+                posts.forEach(post => {
+                    const card = document.createElement('div');
+                    card.className = 'card';
+                    const img = proxyImage(post.featuredImage || 'https://via.placeholder.com/300x450?text=No+Image');
+                    card.innerHTML = `
+                        <img src="${img}" alt="${post.postTitle}" loading="lazy">
+                        <h3>${post.postTitle}</h3>
+                        <p>⭐ ${post.averageRating || '?'} | ${post.seriesStatus || ''}</p>
+                    `;
+                    container.appendChild(card);
+                });
+            } catch (err) {
+                container.innerHTML = `<div class="error">تعذر التحميل: ${err.message}</div>`;
+                console.error(err);
+            }
+        }
+
+        loadManga();
+    </script>
+</body>
+</html>
